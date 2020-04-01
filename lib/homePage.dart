@@ -1,9 +1,8 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
+import 'package:ppg/chart.dart';
 import 'package:wakelock/wakelock.dart';
-
-import 'chart.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -16,10 +15,14 @@ class HomePageView extends HomePageState {
   double average = 0;
   double value = 0;
   int ts = 30;
-  double alpha = 1 / 30;
-  int windowLen = 30 * 2;
-  List<TimeSeriesSales> data = [];
+  double alpha = 0.01;
+  int windowLen = 30 * 3;
+  List<SensorValue> data = [];
   bool _reading = false;
+  List<Color> gradientColors = [
+    const Color(0xff23b6e6),
+    const Color(0xff02d39a),
+  ];
 
   @override
   void initState() {
@@ -83,7 +86,7 @@ class HomePageView extends HomePageState {
     setState(() {
       value = avg - average;
       average = ((1 - alpha) * average + alpha * avg).clamp(0, 255);
-      data.add(TimeSeriesSales(DateTime.now(), (value * 100).round()));
+      data.add(SensorValue(DateTime.now().millisecondsSinceEpoch, value));
       _processing = false;
     });
   }
@@ -129,20 +132,15 @@ class HomePageView extends HomePageState {
           Expanded(
             flex: 1,
             child: Container(
-              padding: EdgeInsets.all(32),
-              child: charts.TimeSeriesChart(
-                [
-                  charts.Series<TimeSeriesSales, DateTime>(
-                    id: 'Sales',
-                    colorFn: (_, __) =>
-                        charts.MaterialPalette.blue.shadeDefault,
-                    domainFn: (TimeSeriesSales sales, _) => sales.time,
-                    measureFn: (TimeSeriesSales sales, _) => sales.sales,
-                    data: data,
-                  )
-                ],
-                animate: false,
-                dateTimeFactory: const charts.LocalDateTimeFactory(),
+              decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(18),
+                  ),
+                  color: const Color(0xff232d37)),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                    right: 18.0, left: 12.0, top: 24, bottom: 12),
+                child: Chart(getChart(data)),
               ),
             ),
           ),
