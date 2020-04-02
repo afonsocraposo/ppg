@@ -9,25 +9,23 @@ class Chart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return new charts.LineChart(data,
+    return new charts.TimeSeriesChart(data,
         animate: false,
         primaryMeasureAxis: charts.NumericAxisSpec(
           tickProviderSpec:
               charts.BasicNumericTickProviderSpec(zeroBound: false),
           renderSpec: charts.NoneRenderSpec(),
         ),
-        domainAxis: new charts.NumericAxisSpec(
-            tickProviderSpec:
-                charts.BasicNumericTickProviderSpec(zeroBound: false),
+        domainAxis: new charts.DateTimeAxisSpec(
             renderSpec: new charts.NoneRenderSpec()));
   }
 }
 
-List<charts.Series<dynamic, num>> getChart(List<SensorValue> data) {
+List<charts.Series<dynamic, DateTime>> getChart(List<SensorValue> data) {
   return [
-    charts.Series<SensorValue, int>(
+    charts.Series<SensorValue, DateTime>(
       id: 'Values',
-      colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
+      colorFn: (_, __) => charts.MaterialPalette.green.shadeDefault,
       domainFn: (SensorValue values, _) => values.time,
       measureFn: (SensorValue values, _) => values.value,
       data: data,
@@ -37,7 +35,7 @@ List<charts.Series<dynamic, num>> getChart(List<SensorValue> data) {
 
 /// Sample linear data type.
 class SensorValue {
-  final int time;
+  final DateTime time;
   final double value;
 
   SensorValue(this.time, this.value);
