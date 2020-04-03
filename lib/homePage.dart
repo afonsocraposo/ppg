@@ -1,7 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:ppg/chart.dart';
 import 'package:wakelock/wakelock.dart';
+import 'chart.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -11,16 +11,6 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
-  int ts = 30;
-  int windowLen = 30 * 2;
-  List<SensorValue> data = [];
-  bool _reading = false;
-  AnimationController animationController;
-  Animation sizeAnimation;
-  double iconScale = 1;
-  double _bpm = 0;
-  double alpha = 0.3;
-
   @override
   void initState() {
     super.initState();
@@ -192,15 +182,23 @@ class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
                     Expanded(
                       flex: 1,
                       child: Center(
-                        child: Text(
-                          "BPM:\n" +
-                              (_bpm > 30 && _bpm < 150
-                                  ? _bpm.round().toString()
-                                  : "--"),
-                          style: TextStyle(fontSize: 32),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                          child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            "Estimated BPM",
+                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          ),
+                          Text(
+                            (_bpm > 30 && _bpm < 150
+                                ? _bpm.round().toString()
+                                : "--"),
+                            style: TextStyle(
+                                fontSize: 32, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      )),
                     ),
                   ],
                 )),
@@ -248,4 +246,13 @@ abstract class HomePageState extends State<HomePage> {
   CameraController controller;
   List<CameraDescription> cameras;
   bool _processing = false;
+  int ts = 30;
+  int windowLen = 30 * 2;
+  List<SensorValue> data = [];
+  bool _reading = false;
+  AnimationController animationController;
+  Animation sizeAnimation;
+  double iconScale = 1;
+  double _bpm = 0;
+  double alpha = 0.3;
 }
