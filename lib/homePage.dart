@@ -19,6 +19,8 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
   AnimationController _animationController;
   double _iconScale = 1;
   int _bpm = 0;
+  int ts = 30;
+  int windowLen = 30 * 2;
 
   @override
   void initState() {
@@ -104,8 +106,9 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
             _values[i].value > _threshold) {
           if (_previous != 0) {
             _counter++;
-            _bpm +=
-                60000 / (_values[i].time.millisecondsSinceEpoch - _previous);
+            _bpm += 60 *
+                1000 /
+                (_values[i].time.millisecondsSinceEpoch - _previous);
           }
           _previous = _values[i].time.millisecondsSinceEpoch;
         }
@@ -116,7 +119,8 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
           _bpm = (1 - _alpha) * _bpm + _alpha * _bpm;
         });
       }
-      await Future.delayed(Duration(milliseconds: (1000 * 50 / 30).round()));
+      await Future.delayed(
+          Duration(milliseconds: (1000 * windowLen / ts).round()));
     }
   }
 
@@ -124,13 +128,13 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
     double _avg =
         image.planes.first.bytes.reduce((value, element) => value + element) /
             image.planes.first.bytes.length;
-    if (_data.length >= 50) {
+    if (_data.length >= windowLen) {
       _data.removeAt(0);
     }
     setState(() {
       _data.add(SensorValue(DateTime.now(), _avg));
     });
-    Future.delayed(Duration(milliseconds: 1000 ~/ 30)).then((onValue) {
+    Future.delayed(Duration(milliseconds: 1000 ~/ ts)).then((onValue) {
       setState(() {
         _processing = false;
       });
