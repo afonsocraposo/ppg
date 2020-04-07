@@ -10,122 +10,142 @@ class HomePage extends StatefulWidget {
   }
 }
 
-class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
+class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
+  bool _toggled = false;
+  bool _processing = false;
+  List<SensorValue> _data = [];
+  CameraController _controller;
+  double _alpha = 0.3;
+  AnimationController _animationController;
+  double _iconScale = 1;
+  int _bpm = 0;
+
   @override
   void initState() {
     super.initState();
-    for (int i = 0; i < windowLen; i++)
-      data.add(SensorValue(DateTime.now(), 0));
-    animationController =
+    _animationController =
         AnimationController(duration: Duration(milliseconds: 500), vsync: this);
-    sizeAnimation = Tween(begin: 0.0, end: 1).animate(CurvedAnimation(
-        parent: animationController, curve: Curves.bounceInOut));
-    animationController
+    _animationController
       ..addListener(() {
         setState(() {
-          iconScale = 1.0 + animationController.value * 0.4;
+          _iconScale = 1.0 + _animationController.value * 0.4;
         });
       });
   }
 
-  void dispose() {
-    super.dispose();
-    _stopImageStream();
-  }
-
-  _startImageStream() async {
-    try {
-      await _initCamera();
-      Future.delayed(Duration(milliseconds: 500))
-          .then((onValue) => controller.flash(true));
-      controller.startImageStream((CameraImage availableImage) {
-        if (!_processing) {
-          setState(() {
-            _processing = true;
-          });
-          _scanImage(availableImage);
-        }
-      });
-      animationController.repeat(reverse: true);
-      // To keep the screen on:
+  _toggle() {
+    _initController().then((onValue) {
       Wakelock.enable();
+      _animationController.repeat(reverse: true);
       setState(() {
-        _reading = true;
+        _toggled = true;
+        _processing = false;
       });
-      updateBPM();
-    } catch (Exception) {
-      controller = null;
-    }
+      _updateBPM();
+    });
   }
 
-  _stopImageStream() {
-    if (controller != null) {
-      controller.flash(false);
-      controller.stopImageStream();
-      controller = null;
-    }
-    animationController.stop();
-    animationController.value = 0.0;
+  _untoggle() {
+    _disposeController();
     Wakelock.disable();
+    _animationController.stop();
+    _animationController.value = 0.0;
     setState(() {
-      _reading = false;
-    });
-  }
-
-  _initCamera() async {
-    cameras = await availableCameras();
-    controller = CameraController(cameras[0], ResolutionPreset.low);
-    await controller.initialize();
-  }
-
-  void _scanImage(CameraImage availableImage) async {
-    double avg = 0;
-    int n = availableImage.planes[0].bytes.length;
-    availableImage.planes[0].bytes.forEach((int value) {
-      avg += value / n;
-    });
-    if (data.length >= windowLen) {
-      data.removeAt(0);
-    }
-    await Future.delayed(Duration(milliseconds: 1000 ~/ ts));
-    setState(() {
-      data.add(SensorValue(DateTime.now(), avg));
+      _toggled = false;
       _processing = false;
     });
   }
 
-  updateBPM() async {
-    List<SensorValue> values = List.from(data);
-    double avg = 0;
-    int n = values.length;
-    double m = 0;
-    values.forEach((SensorValue value) {
-      avg += value.value / n;
-      if (value.value > m) m = value.value;
-    });
-    double threshold = (m + avg) / 2;
-    double bpm = 0;
-    int counter = 0;
-    int previous = 0;
-    for (int i = 1; i < n; i++) {
-      if (values[i - 1].value < threshold && values[i].value > threshold) {
-        if (previous != 0) {
-          counter++;
-          bpm += 60000 / (values[i].time.millisecondsSinceEpoch - previous);
+  Future<void> _initController() async {
+    try {
+      List _cameras = await availableCameras();
+      _controller = CameraController(_cameras.first, ResolutionPreset.low);
+      _controller.initialize();
+      Future.delayed(Duration(milliseconds: 500)).then((onValue) {
+        _controller.flash(true);
+      });
+      _controller.startImageStream((CameraImage image) {
+        if (!_processing) {
+          setState(() {
+            _processing = true;
+          });
+          _scanImage(image);
         }
-        previous = values[i].time.millisecondsSinceEpoch;
-      }
+      });
+    } catch (Exception) {
+      print(Exception);
     }
-    if (_reading) {
-      if (counter > 0) {
-        print(bpm ~/ counter);
+  }
+
+  _updateBPM() async {
+    List<SensorValue> _values;
+    double _avg;
+    int _n;
+    double _m;
+    double _threshold;
+    double _bpm;
+    int _counter;
+    int _previous;
+    while (_toggled) {
+      _values = List.from(_data);
+      _avg = 0;
+      _n = _values.length;
+      _m = 0;
+      _values.forEach((SensorValue value) {
+        _avg += value.value / _n;
+        if (value.value > _m) _m = value.value;
+      });
+      _threshold = (_m + _avg) / 2;
+      _bpm = 0;
+      _counter = 0;
+      _previous = 0;
+      for (int i = 1; i < _n; i++) {
+        if (_values[i - 1].value < _threshold &&
+            _values[i].value > _threshold) {
+          if (_previous != 0) {
+            _counter++;
+            _bpm +=
+                60000 / (_values[i].time.millisecondsSinceEpoch - _previous);
+          }
+          _previous = _values[i].time.millisecondsSinceEpoch;
+        }
+      }
+      if (_counter > 0) {
+        _bpm = _bpm / _counter;
         setState(() {
-          _bpm = (1 - alpha) * bpm + alpha * bpm / counter;
+          _bpm = (1 - _alpha) * _bpm + _alpha * _bpm;
         });
       }
-      Future.delayed(Duration(milliseconds: (1000 * windowLen / ts).round()))
-          .then((onValue) => updateBPM());
+      await Future.delayed(Duration(milliseconds: (1000 * 50 / 30).round()));
     }
+  }
+
+  _scanImage(CameraImage image) {
+    double _avg =
+        image.planes.first.bytes.reduce((value, element) => value + element) /
+            image.planes.first.bytes.length;
+    if (_data.length >= 50) {
+      _data.removeAt(0);
+    }
+    setState(() {
+      _data.add(SensorValue(DateTime.now(), _avg));
+    });
+    Future.delayed(Duration(milliseconds: 1000 ~/ 30)).then((onValue) {
+      setState(() {
+        _processing = false;
+      });
+    });
+  }
+
+  _disposeController() {
+    _controller.dispose();
+    _controller = null;
+  }
+
+  @override
+  void dispose() {
+    _disposeController();
+    super.dispose();
   }
 
   @override
@@ -150,10 +170,11 @@ class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
                           ),
                           child: Stack(
                             children: <Widget>[
-                              controller != null && _reading
+                              _controller != null && _toggled
                                   ? AspectRatio(
-                                      aspectRatio: controller.value.aspectRatio,
-                                      child: CameraPreview(controller),
+                                      aspectRatio:
+                                          _controller.value.aspectRatio,
+                                      child: CameraPreview(_controller),
                                     )
                                   : Container(
                                       padding: EdgeInsets.all(12),
@@ -164,11 +185,11 @@ class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
                                 alignment: Alignment.center,
                                 padding: EdgeInsets.all(4),
                                 child: Text(
-                                  _reading
+                                  _toggled
                                       ? "Cover both the camera and the flash with your finger"
                                       : "Camera feed will display here",
                                   style: TextStyle(
-                                      backgroundColor: _reading
+                                      backgroundColor: _toggled
                                           ? Colors.white
                                           : Colors.transparent),
                                   textAlign: TextAlign.center,
@@ -206,17 +227,17 @@ class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
               flex: 1,
               child: Center(
                 child: Transform.scale(
-                  scale: iconScale,
+                  scale: _iconScale,
                   child: IconButton(
                     icon:
-                        Icon(_reading ? Icons.favorite : Icons.favorite_border),
+                        Icon(_toggled ? Icons.favorite : Icons.favorite_border),
                     color: Colors.red,
                     iconSize: 128,
                     onPressed: () {
-                      if (_reading) {
-                        _stopImageStream();
+                      if (_toggled) {
+                        _untoggle();
                       } else {
-                        _startImageStream();
+                        _toggle();
                       }
                     },
                   ),
@@ -232,7 +253,7 @@ class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
                       Radius.circular(18),
                     ),
                     color: Colors.black),
-                child: Chart(getChart(data)),
+                child: Chart(_data),
               ),
             ),
           ],
@@ -240,19 +261,4 @@ class HomePageView extends HomePageState with SingleTickerProviderStateMixin {
       ),
     );
   }
-}
-
-abstract class HomePageState extends State<HomePage> {
-  CameraController controller;
-  List<CameraDescription> cameras;
-  bool _processing = false;
-  int ts = 30;
-  int windowLen = 30 * 2;
-  List<SensorValue> data = [];
-  bool _reading = false;
-  AnimationController animationController;
-  Animation sizeAnimation;
-  double iconScale = 1;
-  double _bpm = 0;
-  double alpha = 0.3;
 }

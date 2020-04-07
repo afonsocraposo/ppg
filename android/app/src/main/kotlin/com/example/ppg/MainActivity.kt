@@ -1,4 +1,4 @@
-package com.example.ppg
+package com.afonsoraposo.ppg
 
 import androidx.annotation.NonNull;
 import io.flutter.embedding.android.FlutterActivity
