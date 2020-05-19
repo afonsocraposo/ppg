@@ -173,11 +173,12 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
     _initController().then((onValue) {
       Wakelock.enable();
       _animationController?.repeat(reverse: true);
-      _initTimer();
       setState(() {
         _toggled = true;
       });
-      _updateBPM(); // after is toggled
+      // after is toggled
+      _initTimer();
+      _updateBPM();
     });
   }
 
@@ -207,7 +208,6 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
       _controller.startImageStream((CameraImage image) {
         _image = image;
       });
-      _initTimer();
     } catch (Exception) {
       debugPrint(Exception);
     }
