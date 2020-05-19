@@ -25,6 +25,7 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
   CameraImage _image; // store the last camera image
   double _avg; // store the average value during calculation
   DateTime _now; // store the now Datetime
+  Timer _timer; // timer for image processing
 
   @override
   void initState() {
@@ -41,8 +42,12 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
-    _untoggle();
-    _animationController.dispose();
+    _timer?.cancel();
+    _toggled = false;
+    _disposeController();
+    Wakelock.disable();
+    _animationController?.stop();
+    _animationController?.dispose();
     super.dispose();
   }
 
@@ -162,10 +167,13 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
 
   void _clearData() {
     // create array of 128 ~= 255/2
+    _data.clear();
     int now = DateTime.now().millisecondsSinceEpoch;
     for (int i = 0; i < _windowLen; i++)
-      _data[_data.length - 1 - i] = SensorValue(
-          DateTime.fromMillisecondsSinceEpoch(now - i * 1000 ~/ _fs), 128);
+      _data.insert(
+          0,
+          SensorValue(
+              DateTime.fromMillisecondsSinceEpoch(now - i * 1000 ~/ _fs), 128));
   }
 
   void _toggle() {
@@ -214,7 +222,7 @@ class HomePageView extends State<HomePage> with SingleTickerProviderStateMixin {
   }
 
   void _initTimer() {
-    Timer.periodic(Duration(milliseconds: 1000 ~/ _fs), (timer) {
+    _timer = Timer.periodic(Duration(milliseconds: 1000 ~/ _fs), (timer) {
       if (_toggled) {
         if (_image != null) _scanImage(_image);
       } else {
